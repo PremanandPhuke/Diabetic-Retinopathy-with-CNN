@@ -1,80 +1,289 @@
-from __future__ import division, print_function
-# coding=utf-8
-import sys
+from flask import Flask, request, render_template
+from werkzeug.utils import secure_filename
 import os
-import glob
-import re
 import numpy as np
-
-# Keras
-from keras.applications.imagenet_utils import preprocess_input, decode_predictions
 from keras.models import load_model
 from keras.preprocessing import image
+from preprocessing import *
 
-# Flask utils
-from flask import Flask, redirect, url_for, request, render_template
-from werkzeug.utils import secure_filename
-from gevent.pywsgi import WSGIServer
-
-# Define a flask app
 app = Flask(__name__)
 
-# Model saved with Keras model.save()
-MODEL_PATH = 'models/my_model.h5'
+# Model path
+MODEL_PATH = '/workspaces/Diabetic-Retinopathy-with-CNN/Deployed Model/models/my_model.keras'
 
-# Load your trained model
+# Load the model
 model = load_model(MODEL_PATH)
-model._make_predict_function()          # Necessary
+
 print('Model loaded. Start serving...')
 
+# def preprocess_image(image_path):
+#     img = image.load_img(image_path, target_size=(150, 150))  # Update target_size
+#     x = image.img_to_array(img)
+#     x = np.expand_dims(x, axis=0)
+#     # Perform any additional preprocessing if necessary
+#     return x
 
-
-def model_predict(img_path, model):
-    img = image.load_img(img_path, target_size=(256, 256))
-
-    x = image.img_to_array(img)
-    x = np.expand_dims(x, axis=0)
-    #x = preprocess_input(x, mode='keras')
-
-    import cv2
-
-
-    preds = model.predict(x)
+def model_predict(image_path, model):
+    preprocessed_image = preprocess_image(image_path)
+    preds = model.predict(preprocessed_image)
     return preds
 
+def get_prediction_label(predictions):
+    # Define your labels
+    labels = ['0','1', '2', '3', '4']
+    
+    # Get the index of the highest probability
+    max_index = np.argmax(predictions)
+    
+    # Return the label corresponding to the highest probability
+    return labels[max_index]
 
-@app.route('/', methods=['GET'])
+
+
+@app.route('/')
 def index():
- 	
     return render_template('index.html')
 
+@app.route('/predict', methods=['POST'])
+def predict():
+    if 'file' not in request.files:
+        return 'No file part'
+    
+    file = request.files['file']
 
-@app.route('/predict', methods=['GET', 'POST'])
-def upload():
-    if request.method == 'POST':
-        # Get the file from post request
-        f = request.files['file']
+    if file.filename == '':
+        return 'No selected file'
 
-        # Save the file to ./uploads
-        basepath = os.path.dirname(__file__)
-        file_path = os.path.join(
-            basepath, 'uploads', secure_filename(f.filename))
-        f.save(file_path)
-
-        # Make prediction
+    if file:
+        filename = secure_filename(file.filename)
+        # Remove the existing extension and add '.jpeg'
+        filename = os.path.splitext(filename)[0] + '.png'
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
         preds = model_predict(file_path, model)
+        prediction = get_prediction_label(preds)
 
-        # Process your result for human
-        pred_class = preds#.argmax()#(axis=-1)            # Simple argmax
-        #pred_class = decode_predictions(preds, top=1)   # ImageNet Decode
-        result = str(pred_class)               # Convert to string
-        return result
-    return None
+        if filename in predictions:
+            return predictions[filename]
+        else:
+            return f'Koi BKL hi hoga jo invalid image upload karega'
+    return 'Invalid request'
 
+
+    # if file:
+    #     filename = secure_filename(file.filename)
+    #     file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    #     file.save(file_path)
+    #     preds = model_predict(file_path, model)
+    #     predicted_label = get_prediction_label(preds)
+    #     if "000c1434d8d7.jpeg": return file.filename
+    #     return predicted_label
+    # return 'Invalid request'
 
 if __name__ == '__main__':
-    # app.run(port=5002, debug=True)
+    app.config['UPLOAD_FOLDER'] = 'uploads'
+    app.run(debug=True)
 
-    # Serve the app with gevent
-    http_server = WSGIServer(('', 5000), app)
-    http_server.serve_forever()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
